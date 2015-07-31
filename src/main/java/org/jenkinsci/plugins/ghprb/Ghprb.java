@@ -275,9 +275,36 @@ public class Ghprb {
     public static GhprbCause getCause(AbstractBuild<?, ?> build) {
         Cause cause = build.getCause(GhprbCause.class);
         if (cause == null || (!(cause instanceof GhprbCause))) {
-            return null;
+            Cause upstreamCause = build.getCause(Cause.UpstreamCause.class);
+
+            if (upstreamCause == null || (!(upstreamCause instanceof Cause.UpstreamCause))) {
+                return null;
+            } else {
+                return getCauseUpstream((Cause.UpstreamCause) upstreamCause);
+            }
+
         }
         return (GhprbCause) cause;
+    }
+
+    /**
+     * Recursively go upstream to find a root GhprbCause.
+     */
+    private static GhprbCause getCauseUpstream(Cause.UpstreamCause cause) {
+        for(Cause upstreamCause : cause.getUpstreamCauses()) {
+            if(upstreamCause instanceof GhprbCause) {
+                // If we found it return it.
+                return (GhprbCause) upstreamCause;
+            } else if (upstreamCause instanceof Cause.UpstreamCause) {
+                // If we find another upstream cause, recurse into it
+                // then if we find it there return it.
+                GhprbCause foundCause = getCauseUpstream((Cause.UpstreamCause) upstreamCause);
+                if (foundCause != null) return foundCause;
+            }
+        }
+
+        // all else return null.
+        return null;
     }
     
     public static GhprbTrigger extractTrigger(AbstractBuild<?, ?> build) {
